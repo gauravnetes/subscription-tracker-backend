@@ -1,21 +1,100 @@
 import mongoose from "mongoose";
-import User from "../models/user.model.js"
+import User from "../models/user.model.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken"
+import { JWT_EXPIRY, JWT_SECRET } from "../config/env.js";
 // req.body? -> an obj containing data from the client (POST request)
 export const signUp = async (req, res, next) => {
   const session = await mongoose.startSession(); // session of a mongoose transaction
-
+  session.startTransaction(); 
+  
   try {
     // logic to create a new user
-    const { name, email, password } = req.body 
+    const { name, email, password } = req.body;
+
+    const existingUser = await User.findOne({email});
+    if (existingUser) {
+      const error = new Error("User already exists");
+      error.statusCode = 409;
+      throw error;
+    }
+    // hash password
+    const salt = await bcrypt.genSalt(10);
+
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const newUsers = new User({
+      name,
+      email,
+      password: hashedPassword,
+    });
+    await newUsers.save({ session });
     
-    const existingUser = await User.findOne()
+
+    const token = jwt.sign(
+      { userId: newUsers._id },
+      JWT_SECRET,
+      {expiresIn: JWT_EXPIRY}
+    )
+
+    await session.commitTransaction(); // commit to all of the actions we've done above
+    session.endSession(); 
     
-    commitTransaction(); // commit to all of the actions we've done above
+    res.status(201).json({
+      success: true,
+      message: "user created successfully",
+      data: {
+        token,
+        user: newUsers
+      }
+    })
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     next(error);
   }
 };
-export const signIn = async (req, res, next) => {};
+
+export const signIn = async (req, res, next) => {
+  try {
+    const { email, password } = req.body
+
+    const user = await User.findOne({email}); 
+
+    if (!user) {
+      const error = new Error("User Not Found"); 
+      error.statusCode = 404;
+      throw error; 
+    } 
+
+    const isPasswordValid = bcrypt.compare(password, user.password)
+
+    if (!isPasswordValid) {
+      const error = new Error("Invali Password"); 
+      error.statusCode = 401; 
+      throw error; 
+    }
+
+    const token = jwt.sign(
+      {userId: user._id}, 
+      JWT_SECRET,
+      {expiresIn: JWT_EXPIRY}
+    )
+
+    res.status(200).json({
+      success: true, 
+      message: "User signed in successfully", 
+      data: {
+        token, 
+        user
+      }
+    })
+
+
+  } catch (error) {
+    next(error)
+  }
+};
+
+
+ 
 export const signOut = async (req, res, next) => {};

@@ -12,7 +12,7 @@ const app = express()
 // built in middlewares of express
 app.use(express.json()); // allow app to handle json data sent to request 
 app.use(express.urlencoded({extended: false})) // parse URL-encoded request bodies. used to process HTML form data in simple format. without this req.body will be undefined
-app.use(cookieParser); // read cookies from incoming request 
+app.use(cookieParser()); // read cookies from incoming request 
 
 
 // we use app.use to specify which route we'll use too other than for middleware
