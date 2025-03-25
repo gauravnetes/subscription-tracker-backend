@@ -6,6 +6,7 @@ import subscriptionRouter from "./routes/subscription.routes.js";
 import connectToDB from "./database/mongodb.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import cookieParser from "cookie-parser";
+import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
 
 const app = express()
 
@@ -13,7 +14,7 @@ const app = express()
 app.use(express.json()); // allow app to handle json data sent to request 
 app.use(express.urlencoded({extended: false})) // parse URL-encoded request bodies. used to process HTML form data in simple format. without this req.body will be undefined
 app.use(cookieParser()); // read cookies from incoming request 
-
+app.use(arcjetMiddleware)
 
 // we use app.use to specify which route we'll use too other than for middleware
 app.use('/api/v1/auth', authRouter)
